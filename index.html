@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Pendulum Simulation</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+      /* General page styling */
+      body {
+        font-family: "Arial", sans-serif;
+        margin: 0;
+        padding: 20px;
+        background-color: #f0f2f5;
+      }
+      /* Sidebar for parameter inputs */
+      #sidebar {
+        width: 280px;
+        float: left;
+        padding: 20px;
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        margin-right: 20px;
+      }
+      /* Plot container styling */
+      #plots {
+        margin-left: 320px;
+      }
+      #plot1,
+      #plot2,
+      #plot3 {
+        margin-bottom: 20px;
+        background-color: #ffffff;
+        padding: 15px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        height: 500px; /* Fixed height for animation clarity */
+      }
+      /* Headings */
+      h1 {
+        color: #2c3e50;
+        text-align: center;
+      }
+      h2 {
+        color: #34495e;
+        font-size: 1.2em;
+      }
+      /* Input labels */
+      label {
+        display: block;
+        margin: 10px 0 5px;
+        font-weight: 500;
+        color: #34495e;
+      }
+      /* Input fields */
+      input[type="radio"],
+      select,
+      input[type="number"] {
+        margin-bottom: 10px;
+        padding: 8px;
+        width: 100%;
+        box-sizing: border-box;
+        border: 1px solid #dcdcdc;
+        border-radius: 4px;
+      }
+      /* Radio button styling */
+      input[type="radio"] {
+        width: auto;
+        margin-right: 10px;
+      }
+      /* Button styling */
+      button {
+        background-color: #3498db;
+        color: white;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        width: 100%;
+        font-size: 1em;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      /* Responsive design for smaller screens */
+      @media (max-width: 768px) {
+        #sidebar {
+          width: 100%;
+          float: none;
+          margin-right: 0;
+          margin-bottom: 20px;
+        }
+        #plots {
+          margin-left: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Interactive Pendulum Simulation</h1>
+    <div id="sidebar">
+      <h2>Pendulum Parameters</h2>
+      <!-- Radio buttons to select length type -->
+      <label
+        ><input type="radio" name="length_type" value="Fixed" checked /> Fixed
+        Length</label
+      >
+      <label
+        ><input type="radio" name="length_type" value="Dynamic" /> Dynamic
+        Length</label
+      >
+
+      <!-- Fixed length input -->
+      <div id="fixed_length">
+        <label for="length_cm">Select Pendulum Length (cm):</label>
+        <select id="length_cm">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5" selected>5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+      </div>
+
+      <!-- Dynamic length inputs -->
+      <div id="dynamic_length" style="display: none">
+        <label for="L_start">Start Length (m):</label>
+        <input
+          type="number"
+          id="L_start"
+          min="0.1"
+          max="2.0"
+          step="0.1"
+          value="1.0"
+        />
+        <label for="L_end">End Length (m):</label>
+        <input
+          type="number"
+          id="L_end"
+          min="0.1"
+          max="2.0"
+          step="0.1"
+          value="1.5"
+        />
+      </div>
+
+      <!-- Initial angle input -->
+      <label for="theta0">Initial Angle (degrees):</label>
+      <input type="number" id="theta0" min="0" max="90" step="5" value="45" />
+
+      <!-- Simulation time input -->
+      <label for="t_max">Total Simulation Time (s):</label>
+      <input
+        type="number"
+        id="t_max"
+        min="5.0"
+        max="20.0"
+        step="1.0"
+        value="10.0"
+      />
+
+      <!-- Run simulation button -->
+      <button id="run_simulation">Run Simulation</button>
+    </div>
+
+    <div id="plots">
+      <div id="plot1"></div>
+      <div id="plot2"></div>
+      <div id="plot3"></div>
+    </div>
+
+    <script>
+      // Simulates pendulum motion using the Euler method
+      function simulatePendulum(L_array, theta0, t) {
+        // Constants
+        const g = 9.81; // Gravitational acceleration (m/s^2)
+        const theta0_rad = (theta0 * Math.PI) / 180; // Convert initial angle to radians
+
+        // Initialize arrays for angular displacement (theta) and angular velocity (omega)
+        const n = t.length;
+        const dt = t[1] - t[0];
+        let theta = new Array(n).fill(0);
+        let omega = new Array(n).fill(0);
+        theta[0] = theta0_rad;
+        omega[0] = 0.0;
+
+        // Euler method: Update theta and omega at each time step
+        for (let i = 0; i < n - 1; i++) {
+          const alpha = -(g / L_array[i]) * Math.sin(theta[i]); // Angular acceleration
+          omega[i + 1] = omega[i] + alpha * dt; // Update angular velocity
+          theta[i + 1] = theta[i] + omega[i + 1] * dt; // Update angular displacement
+        }
+
+        // Convert theta to degrees for plotting
+        const theta_deg = theta.map((angle) => (angle * 180) / Math.PI);
+
+        // Calculate Cartesian coordinates for the pendulum bob
+        const x = L_array.map((L, i) => L * Math.sin(theta[i]));
+        const y = L_array.map((L, i) => -L * Math.cos(theta[i]));
+
+        // Detect zero crossings to count oscillations
+        let crossings = [];
+        for (let i = 1; i < n; i++) {
+          if (theta[i] * theta[i - 1] < 0) {
+            crossings.push(i);
+          }
+        }
+        const num_oscillations = Math.floor(crossings.length / 2);
+
+        // Calculate average period from zero crossings
+        let avg_period = NaN;
+        if (num_oscillations > 0) {
+          let periods = [];
+          for (let j = 0; j < crossings.length - 1; j += 2) {
+            periods.push(t[crossings[j + 1]] - t[crossings[j]]);
+          }
+          avg_period = periods.reduce((a, b) => a + b, 0) / periods.length;
+        }
+
+        // Return simulation results
+        return { t, theta_deg, x, y, num_oscillations, avg_period, L_array };
+      }
+
+      // Toggle visibility of fixed/dynamic length inputs based on radio selection
+      document
+        .querySelectorAll('input[name="length_type"]')
+        .forEach((radio) => {
+          radio.addEventListener("change", () => {
+            document.getElementById("fixed_length").style.display =
+              radio.value === "Fixed" ? "block" : "none";
+            document.getElementById("dynamic_length").style.display =
+              radio.value === "Dynamic" ? "block" : "none";
+          });
+        });
+
+      // Handle simulation on button click
+      document
+        .getElementById("run_simulation")
+        .addEventListener("click", () => {
+          // Get user inputs
+          const length_type = document.querySelector(
+            'input[name="length_type"]:checked'
+          ).value;
+          const theta0 = parseFloat(document.getElementById("theta0").value);
+          const t_max = parseFloat(document.getElementById("t_max").value);
+          const dt = 0.01; // Fixed time step
+          const t = Array.from(
+            { length: Math.ceil(t_max / dt) },
+            (_, i) => i * dt
+          );
+
+          // Create length array based on length type
+          let L_array;
+          if (length_type === "Fixed") {
+            const length_cm = parseInt(
+              document.getElementById("length_cm").value
+            );
+            const L = length_cm / 100.0; // Convert cm to meters
+            L_array = new Array(t.length).fill(L);
+          } else {
+            const L_start = parseFloat(
+              document.getElementById("L_start").value
+            );
+            const L_end = parseFloat(document.getElementById("L_end").value);
+            L_array = t.map(
+              (time) => L_start + ((L_end - L_start) * time) / t_max
+            ); // Linear interpolation
+          }
+
+          // Run simulation
+          const result = simulatePendulum(L_array, theta0, t);
+          const {
+            t: sim_t,
+            theta_deg,
+            x,
+            y,
+            num_oscillations,
+            avg_period,
+            L_array: sim_L_array,
+          } = result;
+
+          // Prepare analysis text and plot title
+          let analysis_text, title_suffix;
+          if (length_type === "Fixed") {
+            const L = L_array[0];
+            const T_theory = 2 * Math.PI * Math.sqrt(L / 9.81); // Theoretical period
+            analysis_text = `Oscillations: ${num_oscillations}<br>Avg Period: ${avg_period.toFixed(
+              2
+            )} s<br>Theoretical Period: ${T_theory.toFixed(2)} s`;
+            title_suffix = `Fixed Length: ${L.toFixed(2)} m`;
+          } else {
+            const L_start = L_array[0];
+            const L_end = L_array[L_array.length - 1];
+            analysis_text = `Oscillations: ${num_oscillations}<br>Avg Period: ${avg_period.toFixed(
+              2
+            )} s`;
+            title_suffix = `Length varies from ${L_start.toFixed(
+              2
+            )} to ${L_end.toFixed(2)} m`;
+          }
+
+          // Plot 1: Angle vs. Time
+          // Shows angular displacement over time with oscillation analysis
+          const trace1 = {
+            x: sim_t,
+            y: theta_deg,
+            type: "scatter",
+            mode: "lines",
+            name: "Angular Displacement",
+            line: { color: "#3498db" }, // Blue line
+          };
+          const layout1 = {
+            title: {
+              text: `Pendulum Angle over Time (${title_suffix})`,
+              font: { size: 18 },
+            },
+            xaxis: { title: "Time (s)", titlefont: { size: 14 } },
+            yaxis: { title: "Angle (degrees)", titlefont: { size: 14 } },
+            showlegend: false,
+            annotations: [
+              {
+                x: 0.05,
+                y: 0.95,
+                xref: "paper",
+                yref: "paper",
+                text: analysis_text,
+                showarrow: false,
+                bgcolor: "rgba(255,255,255,0.8)",
+                bordercolor: "#7f8c8d",
+                borderwidth: 1,
+                align: "left",
+                font: { size: 12 },
+              },
+            ],
+            margin: { t: 50, b: 50, l: 50, r: 50 },
+          };
+          Plotly.newPlot("plot1", [trace1], layout1);
+
+          // Plot 2: Pendulum Trajectory
+          // Shows the path of the pendulum bob in the x-y plane
+          const trace2 = {
+            x: x,
+            y: y,
+            type: "scatter",
+            mode: "lines",
+            name: "Trajectory",
+            line: { color: "#3498db" }, // Blue line
+          };
+          const trace3 = {
+            x: [0],
+            y: [0],
+            type: "scatter",
+            mode: "markers",
+            name: "Pivot",
+            marker: { size: 12, color: "#2c3e50" }, // Dark pivot point
+          };
+          const layout2 = {
+            title: {
+              text: "Pendulum Trajectory",
+              font: { size: 18 },
+            },
+            xaxis: {
+              title: "x (m)",
+              titlefont: { size: 14 },
+              range: [-Math.max(...L_array) - 0.1, Math.max(...L_array) + 0.1],
+              scaleanchor: "y",
+              scaleratio: 1,
+            },
+            yaxis: {
+              title: "y (m)",
+              titlefont: { size: 14 },
+              range: [-Math.max(...L_array) - 0.1, 0.1],
+            },
+            showlegend: true,
+            legend: { x: 1, xanchor: "right", y: 1 },
+            margin: { t: 50, b: 50, l: 50, r: 50 },
+          };
+          Plotly.newPlot("plot2", [trace2, trace3], layout2);
+
+          // Animation: Pendulum Motion
+          // Visualizes the pendulum rod and bob movement
+          // The bob is represented by a larger red marker for clarity
+          const frames = [];
+          for (let k = 0; k < t.length; k += 5) {
+            frames.push({
+              data: [
+                {
+                  x: [0, x[k]],
+                  y: [0, y[k]],
+                  type: "scatter",
+                  mode: "lines+markers",
+                  line: { color: "#3498db", width: 2 }, // Blue rod
+                  marker: { size: 15, color: "#e74c3c" }, // Larger red bob
+                },
+              ],
+            });
+          }
+          const fig3 = {
+            data: [
+              {
+                x: [0, x[0]],
+                y: [0, y[0]],
+                type: "scatter",
+                mode: "lines+markers",
+                line: { color: "#3498db", width: 2 },
+                marker: { size: 15, color: "#e74c3c" }, // Larger red bob
+              },
+            ],
+            layout: {
+              title: {
+                text: "Pendulum Animation",
+                font: { size: 18 },
+              },
+              xaxis: {
+                title: "x (m)",
+                titlefont: { size: 14 },
+                range: [
+                  -Math.max(...L_array) - 0.1,
+                  Math.max(...L_array) + 0.1,
+                ],
+                scaleanchor: "y",
+                scaleratio: 1,
+              },
+              yaxis: {
+                title: "y (m)",
+                titlefont: { size: 14 },
+                range: [-Math.max(...L_array) - 0.1, 0.1],
+              },
+              showlegend: false,
+              updatemenus: [
+                {
+                  buttons: [
+                    {
+                      args: [
+                        null,
+                        {
+                          frame: { duration: 50, redraw: true },
+                          fromcurrent: true,
+                        },
+                      ],
+                      label: "Play",
+                      method: "animate",
+                    },
+                    {
+                      args: [
+                        [null],
+                        {
+                          frame: { duration: 0, redraw: false },
+                          mode: "immediate",
+                        },
+                      ],
+                      label: "Pause",
+                      method: "animate",
+                    },
+                  ],
+                  direction: "left",
+                  pad: { r: 10, t: 87 },
+                  showactive: false,
+                  type: "buttons",
+                  x: 0.1,
+                  xanchor: "right",
+                  y: 0,
+                  yanchor: "top",
+                },
+              ],
+              margin: { t: 50, b: 50, l: 50, r: 50 },
+            },
+            frames: frames,
+          };
+          Plotly.newPlot("plot3", fig3.data, fig3.layout);
+        });
+    </script>
+  </body>
+</html>
